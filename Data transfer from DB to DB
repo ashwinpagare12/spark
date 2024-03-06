@@ -1,0 +1,38 @@
+from pyspark.sql import SparkSession
+from pyspark.sql import *
+import configparser
+from configparser import *
+
+conf=ConfigParser()
+cred="C:\\Users\\AshwinPagre\\Desktop\\credentials.txt"
+conf.read(cred)
+spark = SparkSession.builder.master("local[*]").appName("test").getOrCreate()
+
+host=conf.get("mscred","mshost");
+user=conf.get("mscred","mssqlusername");
+password=conf.get("mscred","mssqlpassword");
+driver=conf.get("mscred","mssqldriver");
+
+myhost=conf.get("mycred","host");
+myuser=conf.get("mycred","username");
+mypassword=conf.get("mycred","password");
+mydriver=conf.get("mycred","driver");
+
+
+# df = (spark.read.format("jdbc").option("url", host).option("user",user)\
+#       .option("password",password).option("dbtable","EMP")\
+#       .option("driver",driver).load())
+# df.show()
+
+alltab = (spark.read.format("jdbc").option("url", host).option("user",user)\
+      .option("password",password).option("dbtable","(select table_name from information_schema.tables) t ")\
+      .option("driver",driver).load())
+all= [x[0] for x in alltab.collect()]
+
+for x in all:
+    df = (spark.read.format("jdbc").option("url", host).option("user",user)\
+      .option("password",password).option("dbtable",x)\
+      .option("driver",driver).load())
+    df.show()
+    df.write.mode("append").format("jdbc").option("url", myhost).option("user", myuser) \
+        .option("password", mypassword).option("driver", mydriver).option("dbtable", x).save()
